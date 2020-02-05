@@ -96,50 +96,67 @@ let grid = article.children[0].firstElementChild;
 let loading = article.children[1].firstElementChild;
 let more = article.children[2].firstElementChild;
 let p = 1;
-// 1페이지 호출 후 p가 2로 늘어남 (1만큼) - 증가연산은 값 평가 이후 수행됨
-const timelineList = await fetchApiData(url, p++);
-const divide = function(list, size) {
-    const copy = list.slice();
-    const cnt = Math.floor(copy.length / size);
 
-    const listList = [];
-    for(let i = 0; i < cnt; i++) {
-        listList.push(copy.splice(0, size));
-    }
-    return listList;
-};
-const listList = divide(timelineList, 3);
-listList.forEach(list => {
-    grid.insertAdjacentHTML('beforeend', `
-        <div class="Nnq7C weEfm">
-        </div>
-    `);
-    let row = grid.lastElementChild;
+// 클릭 이벤트 핸들러로 사용하기 위해 함수 처리
+const addListList = async function (){
+    more.parentElement.style.display = 'none';
+    loading.parentElement.style.display = '';
+    // 1페이지 호출 후 p가 2로 늘어남 (1만큼) - 증가연산은 값 평가 이후 수행됨
+    const timelineList = await fetchApiData(url, p++);
+    const divide = function(list, size) {
+        const copy = list.slice();
+        const cnt = Math.floor(copy.length / size);
 
-    list.forEach(data => {
-        row.insertAdjacentHTML('beforeend', `
-            <div class="v1Nh3 kIKUG _bz0w">
-                <a href="javascript:;">
-                    <div class="eLAPa">
-                        <div class="KL4Bh"><img class="FFVAD" decoding="auto" src="${IMG_PATH}${data.img}" style="object-fit: cover;"></div>
-                    </div>
-                </a>
+        const listList = [];
+        for(let i = 0; i < cnt; i++) {
+            listList.push(copy.splice(0, size));
+        }
+        return listList;
+    };
+    const listList = divide(timelineList, 3);
+    listList.forEach(list => {
+        grid.insertAdjacentHTML('beforeend', `
+            <div class="Nnq7C weEfm">
             </div>
         `);
+        let row = grid.lastElementChild;
+
+        list.forEach(data => {
+            row.insertAdjacentHTML('beforeend', `
+                <div class="v1Nh3 kIKUG _bz0w">
+                    <a href="javascript:;">
+                        <div class="eLAPa">
+                            <div class="KL4Bh"><img class="FFVAD" decoding="auto" src="${IMG_PATH}${data.img}" style="object-fit: cover;"></div>
+                        </div>
+                    </a>
+                </div>
+            `);
+        });
     });
-});
+
+    loading.parentElement.style.display = 'none';
+    more.parentElement.style.display = '';
+
+    if(totalPage < p){
+        more.parentElement.style.display = 'none';
+        // 필요한 시점에 추가한 이벤트리스너 제거
+        more.removeEventListener('click', clickMore);
+    }
+};
+
+// 첫 페이지에서 한번 호출
+addListList();
 
 // 필요한 시점에 로딩바(의 부모 래퍼div), 더보기버튼(의 부모 래퍼div) display: none; 제거
-more.parentElement.style.display = '';
-// more.parentElement.style.display = 'none';
-loading.parentElement.style.display = '';
-// loading.parentElement.style.display = 'none';
-console.log('>> p: ', p);
-console.log('>> totalPage: ', totalPage);
-const clickMore = function(e) {
-    alert('더보기 로직개발 필요');
+more.parentElement.style.display = 'none';
+loading.parentElement.style.display = 'none';
+if(p >= totalPage){
+    more.parentElement.style.display = '';
 }
-// 필요한 시점에 추가한 이벤트리스너 제거
+
+const clickMore = function(e) {
+    addListList();
+};
+
 more.addEventListener('click', clickMore);
-// more.removeEventListener('click', clickMore);
 })();
