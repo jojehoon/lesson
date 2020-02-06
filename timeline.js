@@ -147,12 +147,16 @@ const addListList = async function (){
 // 첫 페이지에서 한번 호출
 addListList();
 
+/* TODO 1차적으로 아래 로직은 addListList 내부에 이미 있고,
+2차적으로 async 함수인 addListList가 비동기로 수행되었기 때문에
+아래 라인은 실제 비동기 로직이 시작되는 라인 이후에 즉시 실행됩니다
+로직상으로 큰 이슈는 없으나, 빼는 게 더 바람직할 것 같습니다 */
 // 필요한 시점에 로딩바(의 부모 래퍼div), 더보기버튼(의 부모 래퍼div) display: none; 제거
-more.parentElement.style.display = 'none';
-loading.parentElement.style.display = 'none';
-if(p >= totalPage){
-    more.parentElement.style.display = '';
-}
+// more.parentElement.style.display = 'none';
+// loading.parentElement.style.display = 'none';
+// if(p >= totalPage){
+//     more.parentElement.style.display = '';
+// }
 
 const clickMore = function(e) {
     addListList();
@@ -160,3 +164,4 @@ const clickMore = function(e) {
 
 more.addEventListener('click', clickMore);
 })();
+// COMMENT 딱 금주 과제에서 요구하는 범위 내에서 최소한의 수정으로 잘 작업 하셨습니다
