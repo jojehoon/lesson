@@ -138,7 +138,7 @@ const timelineContent = (($parent) => {
 })(timeline.$el);
 
 const grid = await (async ($parent, url) => {
-    let $el;
+    let $el, $buttonLatest, $buttonPopular, $inputSearch;
 
     let page = 1;
     const ITEM_PER_ROW = 3;
@@ -147,6 +147,9 @@ const grid = await (async ($parent, url) => {
     const create = () => {
         render();
         $el = $parent.lastElementChild;
+        $buttonLatest  = document.getElementById('buttonSortByLatest');
+        $buttonPopular = document.getElementById('buttonSortByPopular');
+        $inputSearch   = document.getElementById('inputSearch');
     }
 
     const divide = (list, size) => {
@@ -168,32 +171,44 @@ const grid = await (async ($parent, url) => {
     const listList = divide(timelineList, ITEM_PER_ROW);
 
     const filter = () => {
-        // TODO 검색창 input에 key이벤트 발생시 검색로직 수행
+        const matchedList = timelineList.filter(data => (data.name + data.text).includes($inputSearch.value));
+        if(matchedList.length < 1) return;
         $el.lastElementChild.firstElementChild.innerHTML = '';
-        divide(timelineList.filter(/* TODO */), ITEM_PER_ROW)
-            .forEach(list => {/* TODO */});
+        divide(matchedList, ITEM_PER_ROW)
+            .forEach(list => gridItem($el.lastElementChild.firstElementChild, list));
     }
 
-    const sort = () => {
-        // TODO 최신순/인기순 클릭시 해당 정렬로직 수행
+    const compare = (list, field) => {
+        if(field === 'timestamp'){
+            const calculate = (data) => new Date(data.timestamp).getTime();
+            return list.sort((current, next) => calculate(next) - calculate(current));
+        }
+        if(field === 'popular'){
+            const calculate = (data) => Number(data.clipCount) + (Number(data.commentCount) * 2);
+            return list.sort((current, next) => calculate(next) - calculate(current));
+        }
+    };
+
+    const sort = (field) => {
         $el.lastElementChild.firstElementChild.innerHTML = '';
-        divide(timelineList.sort(/* TODO */), ITEM_PER_ROW)
-            .forEach(list => {/* TODO */});
+        if($inputSearch.value) $inputSearch.value = '';
+        divide(compare(timelineList, field), ITEM_PER_ROW)
+            .forEach(list => gridItem($el.lastElementChild.firstElementChild, list));
     }
 
     const render = () => {
         $parent.insertAdjacentHTML('beforeend', `
             <article class="FyNDV">
                 <div class="Igw0E rBNOH YBx95 ybXk5 _4EzTm soMvl JI_ht bkEs3 DhRcB">
-                    <button class="sqdOP L3NKy y3zKF JI_ht" type="button">최신순</button>
-                    <button class="sqdOP L3NKy y3zKF JI_ht" type="button">인기순</button>
+                    <button class="sqdOP L3NKy y3zKF JI_ht" id="buttonSortByLatest" type="button">최신순</button>
+                    <button class="sqdOP L3NKy y3zKF JI_ht" id="buttonSortByPopular" type="button">인기순</button>
                     <h1 class="K3Sf1">
                         <div class="Igw0E rBNOH eGOV_ ybXk5 _4EzTm">
                             <div class="Igw0E IwRSH eGOV_ vwCYk">
                                 <div class="Igw0E IwRSH eGOV_ ybXk5 _4EzTm">
                                     <div class="Igw0E IwRSH eGOV_ vwCYk">
                                         <label class="NcCcD">
-                                            <input autocapitalize="none" autocomplete="off" class="j_2Hd iwQA6 RO68f M5V28" placeholder="검색" spellcheck="true" type="search" value="" />
+                                            <input autocapitalize="none" autocomplete="off" class="j_2Hd iwQA6 RO68f M5V28" id="inputSearch" placeholder="검색" spellcheck="true" type="search" value="" />
                                             <div class="DWAFP">
                                                 <div class="Igw0E IwRSH eGOV_ _4EzTm">
                                                     <span aria-label="검색" class="glyphsSpriteSearch u-__7"></span>
@@ -217,45 +232,49 @@ const grid = await (async ($parent, url) => {
     }
 
     create();
+
+    $buttonLatest.addEventListener('click', () => sort('timestamp'));
+    $buttonPopular.addEventListener('click', () => sort('popular'));
+    $inputSearch.addEventListener('keyup', filter);
+
     return { $el, listList }
 })(timelineContent.$el.firstElementChild, timeline.url);
 
-grid.listList.forEach(list => {
-    const gridItem = (($parent, list) => {
-        let $el;
+const gridItem = ($parent, list) => {
+    let $el;
+    const create = () => {
+        render(list);
+        $el = $parent.lastElementChild;
+    }
 
-        const create = () => {
-            render(list);
-            $el = $parent.lastElementChild;
-        }
-
-        const render = (list) => {
-            const html = list.reduce((html, data) => {
-                const img = (data.img || '') && `
-                    <a href="javascript:;">
-                        <div class="eLAPa">
-                            <div class="KL4Bh">
-                                <img class="FFVAD" decoding="auto" src="${common.IMG_PATH}${data.img}" style="object-fit: cover;">
-                            </div>
+    const render = (list) => {
+        const html = list.reduce((html, data) => {
+            const img = (data.img || '') && `
+                <a href="javascript:;">
+                    <div class="eLAPa">
+                        <div class="KL4Bh">
+                            <img class="FFVAD" decoding="auto" src="${common.IMG_PATH}${data.img}" style="object-fit: cover;">
                         </div>
-                    </a>
-                `;
-                html += `
-                    <div class="v1Nh3 kIKUG _bz0w">${img}</div>
-                `;
-                return html;
-            }, '');
-            
-            $parent.insertAdjacentHTML('beforeend', `
-                <div class="Nnq7C weEfm">
-                    ${html}
-                </div>
-            `);
-        }
-    
-        create();
-        return { $el }
-    })(grid.$el.lastElementChild.firstElementChild, list);
-});
+                    </div>
+                </a>
+            `;
+            html += `
+                <div class="v1Nh3 kIKUG _bz0w">${img}</div>
+            `;
+            return html;
+        }, '');
+        
+        $parent.insertAdjacentHTML('beforeend', `
+            <div class="Nnq7C weEfm">
+                ${html}
+            </div>
+        `);
+    }
+
+    create();
+    return { $el }
+};
+
+grid.listList.forEach(list => gridItem(grid.$el.lastElementChild.firstElementChild, list));
 
 })();
