@@ -147,6 +147,10 @@ const grid = await (async ($parent, url) => {
     const create = () => {
         render();
         $el = $parent.lastElementChild;
+        /* FIXME 컴포넌트 내부에서 문서 전체에 대한 DOM 룩업은 지양해주세요
+        컴포넌트 밖에 어떤 엘리먼트 들이 있을 지 알 수 없습니다
+        엘리먼트 ID는 유일한 게 바람직하나, 충분히 유일하지 않을 수 있습니다
+        컴포넌트 내부로직의 영향범위는 컴포넌트 내부로 한정해주세요 */
         $buttonLatest  = document.getElementById('buttonSortByLatest');
         $buttonPopular = document.getElementById('buttonSortByPopular');
         $inputSearch   = document.getElementById('inputSearch');
@@ -178,21 +182,21 @@ const grid = await (async ($parent, url) => {
             .forEach(list => gridItem($el.lastElementChild.firstElementChild, list));
     }
 
-    const compare = (list, field) => {
-        if(field === 'timestamp'){
-            const calculate = (data) => new Date(data.timestamp).getTime();
-            return list.sort((current, next) => calculate(next) - calculate(current));
-        }
-        if(field === 'popular'){
-            const calculate = (data) => Number(data.clipCount) + (Number(data.commentCount) * 2);
-            return list.sort((current, next) => calculate(next) - calculate(current));
-        }
-    };
+    /* TODO 적절한 패턴 적용하여, 조금 더 견고하게 리팩토링 했습니다 (수정완료)
+    (참고) sort에 들어가는 콜백 자체를 기반으로 구조를 잡는 것도 고려 해보세요 */
+    const calculate = {
+        timestamp: (data) => new Date(data.timestamp).getTime(),
+        popular: (data) => Number(data.clipCount) + (Number(data.commentCount) * 2),
+    }
 
+    /* COMMENT filte리스너와 달리 sort리스너에서는 비즈니스 로직을 별도 메소드로 태우고 있습니다
+    sort 메소드에 로직을 응집시키고, 필요시 리스너에서 해야할 일 정도만 분리시키는 게 좋을 것 같습니다
+    ex) 부모 엘리먼트에 이벤트 위임을 할 경우, 리스너에서 이벤트를 정제하게 됩니다 */
     const sort = (field) => {
+        const sortedList = timelineList.sort((current, next) => calculate[field](next) - calculate[field](current))
         $el.lastElementChild.firstElementChild.innerHTML = '';
         if($inputSearch.value) $inputSearch.value = '';
-        divide(compare(timelineList, field), ITEM_PER_ROW)
+        divide(sortedList, ITEM_PER_ROW)
             .forEach(list => gridItem($el.lastElementChild.firstElementChild, list));
     }
 
@@ -232,7 +236,8 @@ const grid = await (async ($parent, url) => {
     }
 
     create();
-
+    /* TODO 지금과 같이, 같은 부모 아래에 동일한 엘리먼트 들에 이벤트를 걸 때는
+    부모 엘리먼트에 이벤트를 등록하고, 리스너 내부에서 분기되는 게 성능상 더 바람직합니다 */
     $buttonLatest.addEventListener('click', () => sort('timestamp'));
     $buttonPopular.addEventListener('click', () => sort('popular'));
     $inputSearch.addEventListener('keyup', filter);
