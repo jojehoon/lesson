@@ -176,8 +176,8 @@ const TimelineContent = ($parent, url = '', profileData = {}, totalPage = 1) => 
                     observer.unobserve(entry.target);
                     $loading.style.display = 'none';
                 }
-            }); // rootMargin 미동작 (인스타그램에서 자체적으로 막아놓은 것 같기도 함)
-        });
+            });
+        }, { rootMargin: innerHeight + 'px' });
         io.observe($loading);
     }
 
@@ -201,7 +201,6 @@ const TimelineContent = ($parent, url = '', profileData = {}, totalPage = 1) => 
     return { $el, create, destroy }
 };
 
-// TODO 뷰 역할인 Feed 컴포넌트에 이미지 레이지로드 기능 추가 - initInfiniteScroll 히스토리 참고
 const Feed = ($parent, profileData = {}, pageDataList = []) => {
     const $elList = [];
 
@@ -213,14 +212,30 @@ const Feed = ($parent, profileData = {}, pageDataList = []) => {
         $elList.forEach($el => $parent.removeChild($el));
     }
 
+    const lazyLoad = (list) => {
+        const io = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if(!entry.isIntersecting) return;
+                const target    = entry.target;
+                const targetImg = target.querySelector('.FFVAD');
+                targetImg.setAttribute('src', targetImg.dataset.src);
+                observer.unobserve(target);
+            });
+        }, { rootMargin: innerHeight + 'px' });
+        list.forEach(el => io.observe(el));
+    };
+
     const addFeedItems = (profileData = {}, pageDataList = []) => {
         const firstIndex = $parent.children.length;
         render(profileData, pageDataList);
         $elList.push(...[].slice.call($parent.children, firstIndex));
+        // XXX 추가된 리스트만 인자로 넣어 lazyLoad를 호출하였습니다 (기존 entry의 isIntersecting 속성 초기화 방지)
+        lazyLoad($elList.slice(firstIndex, $elList.length));
     }
 
     const render = (profileData, pageDataList) => {
         const html = pageDataList.reduce((html, data) => {
+            // XXX 엘리먼트가 반복 생성되어서, id값이 고유하지 못하게 되는 것 같습니다
             html += `
                 <article id="feed" class="M9sTE h0YNM SgTZ1">
                     <header class="Ppjfr UE9AK wdOqh">
