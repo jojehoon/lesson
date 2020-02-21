@@ -213,10 +213,21 @@ const Feed = ($parent, profileData = {}, pageDataList = []) => {
     }
 
     const lazyLoad = (list) => {
+        /* TODO 현재는 페이지수 만큼 io객체가 생성되고 있습니다, 만약 10페이지, 100페이지, ... 가 있다면 그 만큼 생성됩니다
+        로직상 Feed는 List를 담는 컴포넌트이기 때문에, 사실 io는 하나만 있으면 충분합니다
+        io 생성은 컴포넌트 레벨로 올리고, observe하는 로직만 반복되면 성능이 개선될 수 있을 것 같습니다 */
         const io = new IntersectionObserver((entries, observer) => {
             entries.forEach(entry => {
                 if(!entry.isIntersecting) return;
                 const target    = entry.target;
+                /* FIXME 일단 여기서는 FFVAD 클래스가 내부적으로 이미지를 뜻하는 게 아니어서 바람직하지 못합니다
+                해당 클래스가 이미지가 맞더라도, 추후 확장시 다른 엘리먼트에 해당 클래스가 사용되면 버그가 발생합니다
+                또는 해당 클래스의 이름이 변경될 경우에도 의도치 않은 동작이 발생합니다 (이 때는 장애)
+                스타일을 위해 사용한 마크업 상의 클래스는 컴포넌트 로직에서는 되도록 사용을 지양해주세요
+                마크업의 클래스와 컴포넌트의 로직이 의미상으로 1:1로 일치되는 경우는 거의 없습니다
+                거의 대부분 우연히 그 시점에만 때려맞았을 뿐이고, 잠재적인 버그를 갖고 있습니다
+                (참고로 NHN에서는, 꼭 필요할 경우 js-classname 같은 클래스를 직접 추가해서 쓰는 걸 권장합니다)
+                만약 제가 했다면 img[data-src] 정도로 썼을 것 같은데, 여기부터는 취향이라 참고만 해주세요 */
                 const targetImg = target.querySelector('.FFVAD');
                 targetImg.setAttribute('src', targetImg.dataset.src);
                 observer.unobserve(target);
@@ -229,15 +240,17 @@ const Feed = ($parent, profileData = {}, pageDataList = []) => {
         const firstIndex = $parent.children.length;
         render(profileData, pageDataList);
         $elList.push(...[].slice.call($parent.children, firstIndex));
-        // XXX 추가된 리스트만 인자로 넣어 lazyLoad를 호출하였습니다 (기존 entry의 isIntersecting 속성 초기화 방지)
+        // 추가된 리스트만 인자로 넣어 lazyLoad를 호출하였습니다 (기존 entry의 isIntersecting 속성 초기화 방지)
+        // COMMENT 다들 이 부분 놓치셨는데, 잘 하셨네요~!
         lazyLoad($elList.slice(firstIndex, $elList.length));
     }
 
     const render = (profileData, pageDataList) => {
         const html = pageDataList.reduce((html, data) => {
-            // XXX 엘리먼트가 반복 생성되어서, id값이 고유하지 못하게 되는 것 같습니다
+            // 엘리먼트가 반복 생성되어서, id값이 고유하지 못하게 되는 것 같습니다
+            // COMMENT 요거 제가 깜박하고 안 지우고 커밋 했습니다. 해당 id는 제거 대상입니다~!
             html += `
-                <article id="feed" class="M9sTE h0YNM SgTZ1">
+                <article class="M9sTE h0YNM SgTZ1">
                     <header class="Ppjfr UE9AK wdOqh">
                         <div class="RR-M- h5uC0 mrq0Z" role="button" tabindex="0">
                             <canvas class="CfWVH" height="126" width="126" style="position: absolute; top: -5px; left: -5px; width: 42px; height: 42px;"></canvas>
