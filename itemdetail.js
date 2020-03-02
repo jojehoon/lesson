@@ -183,31 +183,17 @@ const Item = (() => {
         this.$left = this.$el.querySelector('.js-left');
         this.$right = this.$el.querySelector('.js-right');
         this.$pagebar = this.$el.querySelector('.js-pagebar');
+        this.activeClass = 'XCodT';
+        this._slider = new Slider(this._dataList, this.$slider, this.$sliderList, this.$left, this.$right, this.$pagebar, this.activeClass);
     }
     const proto = Item.prototype;
 
+    
     proto.create = function() {
+        this._slider.create();
     }
     proto.destroy = function() {
         this.$parent.removeChild(this.$el);
-    }
-
-    proto.click = function() {
-        // TODO $left/$right 화살표 숨김/표시 (필요한 로직 추가)
-        // TODO this.$slider.style.transform = `translateX(${이동좌표}px)`;
-        // TODO $pagebar 이미지에 대응되는 엘리먼트로 XCodT 클래스 이동 (on 처리)
-        // TODO 가로사이즈는 innerWidth로 직접 잡거나, innerWidth를 캐싱해두고 사용
-    }
-    proto.resize = function() {
-        // HACK 현재 데이터바인딩을 지원하지 않으므로, 리스트 모든 엘리먼트 지우고 새로 렌더링
-        while(this.$sliderList.firstChild) {
-            this.$sliderList.removeChild(this.$sliderList.firstChild);
-        }
-        this.$sliderList.insertAdjacentHTML('beforeend', `
-            ${this.htmlSliderImgs(this._dataList)}
-        `);
-        // TODO 리프레시 전 슬라이드 이미지 다시 노출 (좌표보정)
-        // TODO 가로사이즈는 innerWidth로 직접 잡거나, innerWidth를 캐싱해두고 사용
     }
 
     proto.htmlSliderImgs = function(imgDataList) {
@@ -232,6 +218,7 @@ const Item = (() => {
         }, '');
         return imgs;
     }
+
     proto.render = function(data, profileData) {
         const navs = this._dataList.reduce((html, img, index) => {
             const on = index === 0 ? 'XCodT' : '';
@@ -240,6 +227,7 @@ const Item = (() => {
             `;
             return html;
         }, '');
+
         this.$parent.insertAdjacentHTML('afterbegin', `
             <article class="QBXjJ M9sTE h0YNM SgTZ1 Tgarh">
                 <header class="Ppjfr UE9AK wdOqh">
@@ -325,6 +313,84 @@ const Item = (() => {
     }
 
     return Item;
+})();
+
+const Slider = (() => {
+    const Slider = function(_dataList, $slider, $sliderList, $left, $right, $pagebar, activeClass){
+        this._dataList    = _dataList;
+        this._$slider     = $slider;
+        this._$sliderList = $sliderList
+        this._$left       = $left;
+        this._$right      = $right;
+        this._$pagebar    = $pagebar;
+        this._activeClass = activeClass
+        this._Item;
+        this.$click;
+        this.$resize;
+        this.currentIndex = 0;
+        this.startIndex   = 0;
+        this.lastIndex    = this._dataList.length - 1;
+    }
+
+    const proto = Slider.prototype;
+
+    proto.create = function() {
+        this.addEvent();
+        this.slider();
+    }
+
+    proto.translate = function(currentIndex){
+        this._$slider.style.transform = `translateX(${ -1 * (innerWidth * currentIndex) }px)`
+    }
+
+    proto.navigate = function(currentIndex){
+        this._$left.style.display  = 'block';
+        this._$right.style.display = 'block';
+        if(currentIndex === this.startIndex) this._$left.style.display  = 'none';
+        if(currentIndex === this.lastIndex)  this._$right.style.display = 'none';
+    }
+
+    proto.indicate = function(currentIndex){
+        const indicators = [...this._$pagebar.children];
+        if(currentIndex > (this.lastIndex)) return;
+        indicators.forEach(indicator => {
+          if(indicator.classList.contains(this._activeClass)) indicator.classList.remove(this._activeClass);
+        });
+        indicators[currentIndex].classList.add(this._activeClass);
+    }
+  
+    proto.resize = function() {
+        this._Item = Object.setPrototypeOf({}, Item.prototype);
+        while(this._$sliderList.firstChild) {
+        this._$sliderList.removeChild(this._$sliderList.firstChild);
+        }
+        this._$sliderList.insertAdjacentHTML('beforeend', `
+        ${this._Item.htmlSliderImgs(this._dataList)}
+        `);
+        this.translate(this.currentIndex);
+    }
+  
+    proto.click = function(e) {
+        const $button = e.currentTarget;
+        if($button === this._$right) this.slider(this.currentIndex += 1);
+        if($button === this._$left)  this.slider(this.currentIndex -= 1);
+    }
+  
+    proto.addEvent = function(){
+        this.$click  = this.click.bind(this);
+        this.$resize = this.resize.bind(this);
+        this._$right.addEventListener('click', this.$click);
+        this._$left.addEventListener('click', this.$click);
+        window.addEventListener('resize', this.$resize);
+    }
+  
+    proto.slider = function(currentIndex = 0){
+        this.translate(currentIndex);
+        this.navigate(currentIndex);
+        this.indicate(currentIndex);
+    };
+  
+    return Slider;
 })();
 
 const Detail = (() => {
