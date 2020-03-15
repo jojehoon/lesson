@@ -194,6 +194,11 @@ const Item = (() => {
     }
     proto.destroy = function() {
         this.$parent.removeChild(this.$el);
+        /* BUG destroy 시에 this._slider의 이벤트리스너가 제거되지 않아 메모리 누수가 쌓이고 있습니다
+        root.destroy() 후 리사이즈 이벤트 발생시켜 보시면, 전부 살아있는 것 확인하실 수 있습니다
+        컴포넌트에서 추가되는 모든 추가로직은 대응되는 제거로직을 작성 해주시고,
+        destroy에서는 추가된 모든 것들을 제거하는 로직을 붙여주세요
+        지금은 Slider에 destroy, removeEvent 추가하고, 여기서 this._slider.destroy() 불러주면 될 것 같습니다 */
     }
 
     proto.htmlSliderImgs = function(imgDataList) {
@@ -315,6 +320,7 @@ const Item = (() => {
     return Item;
 })();
 
+// COMMENT 전체적인 설계가 매우 깔끔하고 명확합니다. 메소드 분리도 잘 되었습니다.
 const Slider = (() => {
     const Slider = function(_dataList, $slider, $sliderList, $left, $right, $pagebar, activeClass){
         this._dataList    = _dataList;
@@ -324,7 +330,7 @@ const Slider = (() => {
         this._$right      = $right;
         this._$pagebar    = $pagebar;
         this._activeClass = activeClass
-        this._Item;
+        this._Item; // TODO 제거 (아래참조)
         this.$click;
         this.$resize;
         this.currentIndex = 0;
@@ -335,9 +341,21 @@ const Slider = (() => {
     const proto = Slider.prototype;
 
     proto.create = function() {
+        this.slide();
         this.addEvent();
-        this.slider();
     }
+  
+    /* COMMENT 현재 this.currentIndex를 이벤트에서만 제어하고, 이하부터는 파라미터로 받고 있습니다
+    함수설계 관점에서 보면, 함수는 외부상태에 독립적일 수록 좋으므로 바람직한 설계이나
+    객체설계 관점에서 보면, 실제로는 this.currentIndex가 객체에서 상태관리하는 속성이므로
+    (currentIndex 파라미터에 this.currentIndex 이외의 값이 들어오는 케이스 자체가 잘못된 로직이므로)
+    설계관점에 따라서 불필요한 절차지향스러운 데이터흐름으로 볼 수도 있을 것 같습니다
+    잘못된 설계는 아니니 이 의견은 참고만 해주세요 */
+    proto.slide = function(currentIndex = 0){
+        this.translate(currentIndex);
+        this.navigate(currentIndex);
+        this.indicate(currentIndex);
+    };
 
     proto.translate = function(currentIndex){
         this._$slider.style.transform = `translateX(${ -1 * (innerWidth * currentIndex) }px)`
@@ -353,6 +371,8 @@ const Slider = (() => {
     proto.indicate = function(currentIndex){
         const indicators = [...this._$pagebar.children];
         if(currentIndex > (this.lastIndex)) return;
+        /* TODO 결국 this._$pagebar에서 this._activeClass 클래스를 룩업하는 것과 같은로직 같습니다
+        전체 자식 엘리먼트를 직접 이터레이팅하기 보다는, 표준API 사용이 유리하지 않을까 싶습니다 */
         indicators.forEach(indicator => {
           if(indicator.classList.contains(this._activeClass)) indicator.classList.remove(this._activeClass);
         });
@@ -360,6 +380,10 @@ const Slider = (() => {
     }
   
     proto.resize = function() {
+        /* FIXME 슬라이더 내부 메소드에 Item 클래스가 하드코딩되어 의존성이 생겼습니다 (커플링)
+        또한 Item에서 수행한 렌더링 로직을 Slider 안에서 재수행하고 있습니다 (책임전가)
+        우선은 아래로직 자체를 콜백으로 주입받아 여기서는 호출만 하는 방법이 있을 것 같고
+        추후 객체간 커스텀이벤트나 데이터바인딩으로 처리하면 될 것 같습니다 */
         this._Item = Object.setPrototypeOf({}, Item.prototype);
         while(this._$sliderList.firstChild) {
         this._$sliderList.removeChild(this._$sliderList.firstChild);
@@ -372,8 +396,8 @@ const Slider = (() => {
   
     proto.click = function(e) {
         const $button = e.currentTarget;
-        if($button === this._$right) this.slider(this.currentIndex += 1);
-        if($button === this._$left)  this.slider(this.currentIndex -= 1);
+        if($button === this._$right) this.slide(++this.currentIndex);
+        if($button === this._$left)  this.slide(--this.currentIndex);
     }
   
     proto.addEvent = function(){
@@ -383,12 +407,6 @@ const Slider = (() => {
         this._$left.addEventListener('click', this.$click);
         window.addEventListener('resize', this.$resize);
     }
-  
-    proto.slider = function(currentIndex = 0){
-        this.translate(currentIndex);
-        this.navigate(currentIndex);
-        this.indicate(currentIndex);
-    };
   
     return Slider;
 })();
